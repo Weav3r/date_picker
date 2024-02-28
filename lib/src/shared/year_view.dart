@@ -40,8 +40,8 @@ class YearView extends StatelessWidget {
       final min = DateTime(minDate.year);
       final selected = DateTime(
         selectedDate!.year,
-        selectedDate!.month,
-        selectedDate!.day,
+        // selectedDate!.month,
+        // selectedDate!.day,
       );
       return (selected.isAfter(min) || selected.isAtSameMomentAs(min)) &&
           (selected.isBefore(max) || selected.isAtSameMomentAs(max));
