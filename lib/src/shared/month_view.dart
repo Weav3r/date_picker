@@ -38,7 +38,7 @@ class MonthView extends StatelessWidget {
       final selected = DateTime(
         selectedDate!.year,
         selectedDate!.month,
-        selectedDate!.day,
+        // selectedDate!.day,
       );
 
       return (selected.isAfter(min) || selected.isAtSameMomentAs(min)) &&
