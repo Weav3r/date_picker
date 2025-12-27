@@ -73,28 +73,8 @@ class MonthPicker extends StatefulWidget {
     this.nextPageSemanticLabel = 'Next Month',
   }) {
     assert(!minDate.isAfter(maxDate), "minDate can't be after maxDate");
-
-    assert(
-      () {
-        if (initialDate == null) return true;
-        final init = DateUtilsX.monthOnly(initialDate!);
-
-        final min = DateUtilsX.monthOnly(minDate);
-
-        return init.isAfter(min) || init.isAtSameMomentAs(min);
-      }(),
-      'initialDate $initialDate must be on or after minDate $minDate.',
-    );
-    assert(
-      () {
-        if (initialDate == null) return true;
-        final init = DateUtilsX.monthOnly(initialDate!);
-
-        final max = DateUtilsX.monthOnly(maxDate);
-        return init.isBefore(max) || init.isAtSameMomentAs(max);
-      }(),
-      'initialDate $initialDate must be on or before maxDate $maxDate.',
-    );
+    // Note: Removed strict initialDate assertions.
+    // The initState method will clamp initialDate to valid range.
   }
 
   /// The date which will be displayed on first opening. If not specified, the picker
@@ -241,11 +221,17 @@ class _MonthPickerState extends State<MonthPicker> {
 
   @override
   void initState() {
-    final clampedInitailDate =
-        DateUtilsX.clampDateToRange(max: widget.maxDate, min: widget.minDate, date: DateTime.now());
-    _displayedYear = DateUtilsX.yearOnly(widget.initialDate ?? clampedInitailDate);
+    // Clamp the initialDate (or DateTime.now() if null) to be within valid range.
+    final clampedInitialDate = DateUtilsX.clampDateToRange(
+      max: widget.maxDate,
+      min: widget.minDate,
+      date: widget.initialDate ?? DateTime.now(),
+    );
+    _displayedYear = DateUtilsX.yearOnly(clampedInitialDate);
 
-    _selectedDate = widget.selectedDate != null ? DateUtilsX.monthOnly(widget.selectedDate!) : null;
+    _selectedDate = widget.selectedDate != null
+        ? DateUtilsX.monthOnly(widget.selectedDate!)
+        : null;
     _pageController = PageController(
       initialPage: (_displayedYear!.year - widget.minDate.year),
     );
@@ -259,14 +245,17 @@ class _MonthPickerState extends State<MonthPicker> {
     // but for makeing debuging easy, we will navigate to the initial date again
     // if it changes.
     if (oldWidget.initialDate != widget.initialDate) {
-      final clampedInitailDate =
-          DateUtilsX.clampDateToRange(max: widget.maxDate, min: widget.minDate, date: DateTime.now());
-      _displayedYear = DateUtilsX.yearOnly(widget.initialDate ?? clampedInitailDate);
+      final clampedInitailDate = DateUtilsX.clampDateToRange(
+          max: widget.maxDate, min: widget.minDate, date: DateTime.now());
+      _displayedYear =
+          DateUtilsX.yearOnly(widget.initialDate ?? clampedInitailDate);
       _pageController.jumpToPage(_displayedYear!.year - widget.minDate.year);
     }
 
     if (oldWidget.selectedDate != _selectedDate) {
-      _selectedDate = widget.selectedDate != null ? DateUtilsX.monthOnly(widget.selectedDate!) : null;
+      _selectedDate = widget.selectedDate != null
+          ? DateUtilsX.monthOnly(widget.selectedDate!)
+          : null;
     }
     super.didUpdateWidget(oldWidget);
   }
@@ -306,7 +295,8 @@ class _MonthPickerState extends State<MonthPicker> {
           color: colorScheme.onSurface.withValues(alpha: 0.30),
         );
 
-    final BoxDecoration disbaledCellsDecoration = widget.disabledCellsDecoration;
+    final BoxDecoration disbaledCellsDecoration =
+        widget.disabledCellsDecoration;
 
     //
     //! current
@@ -336,11 +326,12 @@ class _MonthPickerState extends State<MonthPicker> {
           color: colorScheme.onPrimary,
         );
 
-    final BoxDecoration selectedCellDecoration = widget.selectedCellDecoration ??
-        BoxDecoration(
-          color: colorScheme.primary,
-          shape: BoxShape.circle,
-        );
+    final BoxDecoration selectedCellDecoration =
+        widget.selectedCellDecoration ??
+            BoxDecoration(
+              color: colorScheme.primary,
+              shape: BoxShape.circle,
+            );
 
     //
     //
@@ -353,7 +344,8 @@ class _MonthPickerState extends State<MonthPicker> {
           color: Theme.of(context).colorScheme.primary,
         );
 
-    final slidersColor = widget.slidersColor ?? Theme.of(context).colorScheme.primary;
+    final slidersColor =
+        widget.slidersColor ?? Theme.of(context).colorScheme.primary;
 
     final slidersSize = widget.slidersSize ?? 20;
 

@@ -71,28 +71,8 @@ class YearsPicker extends StatefulWidget {
     this.nextPageSemanticLabel = 'Next Year',
   }) {
     assert(!minDate.isAfter(maxDate), "minDate can't be after maxDate");
-
-    assert(
-      () {
-        if (initialDate == null) return true;
-        final init = DateUtilsX.yearOnly(initialDate!);
-
-        final min = DateUtilsX.yearOnly(minDate);
-
-        return init.isAfter(min) || init.isAtSameMomentAs(min);
-      }(),
-      'initialDate $initialDate must be on or after minDate $minDate.',
-    );
-    assert(
-      () {
-        if (initialDate == null) return true;
-        final init = DateUtilsX.yearOnly(initialDate!);
-
-        final max = DateUtilsX.yearOnly(maxDate);
-        return init.isBefore(max) || init.isAtSameMomentAs(max);
-      }(),
-      'initialDate $initialDate must be on or before maxDate $maxDate.',
-    );
+    // Note: Removed strict initialDate assertions.
+    // The initialPageNumber getter will clamp initialDate to valid range.
   }
 
   /// The date which will be displayed on first opening. If not specified, the picker
@@ -243,7 +223,9 @@ class _YearsPickerState extends State<YearsPicker> {
       start: DateTime(widget.minDate.year + initialPageNumber * 12),
       end: DateTime(widget.minDate.year + initialPageNumber * 12 - 1 + 12),
     );
-    _selectedDate = widget.selectedDate != null ? DateUtilsX.yearOnly(widget.selectedDate!) : null;
+    _selectedDate = widget.selectedDate != null
+        ? DateUtilsX.yearOnly(widget.selectedDate!)
+        : null;
     super.initState();
   }
 
@@ -261,7 +243,9 @@ class _YearsPickerState extends State<YearsPicker> {
     }
 
     if (oldWidget.selectedDate != widget.selectedDate) {
-      _selectedDate = widget.selectedDate != null ? DateUtilsX.yearOnly(widget.selectedDate!) : null;
+      _selectedDate = widget.selectedDate != null
+          ? DateUtilsX.yearOnly(widget.selectedDate!)
+          : null;
     }
 
     super.didUpdateWidget(oldWidget);
@@ -277,14 +261,19 @@ class _YearsPickerState extends State<YearsPicker> {
   /// between [minDate] and [maxDate].
   ///
   /// Each page will contains 12 years in a 3 x 4 grid.
-  int get pageCount => ((widget.maxDate.year - widget.minDate.year + 1) / 12).ceil();
+  int get pageCount =>
+      ((widget.maxDate.year - widget.minDate.year + 1) / 12).ceil();
 
   int get initialPageNumber {
-    final clampedInitailDate =
-        DateUtilsX.clampDateToRange(max: widget.maxDate, min: widget.minDate, date: DateTime.now());
-    final init = widget.initialDate ?? clampedInitailDate;
+    // Clamp the initialDate (or DateTime.now() if null) to be within valid range.
+    final clampedInitialDate = DateUtilsX.clampDateToRange(
+      max: widget.maxDate,
+      min: widget.minDate,
+      date: widget.initialDate ?? DateTime.now(),
+    );
 
-    final page = ((init.year - widget.minDate.year + 1) / 12).ceil() - 1;
+    final page =
+        ((clampedInitialDate.year - widget.minDate.year + 1) / 12).ceil() - 1;
     if (page < 0) return 0;
     return page;
   }
@@ -325,7 +314,8 @@ class _YearsPickerState extends State<YearsPicker> {
           color: colorScheme.onSurface.withValues(alpha: 0.30),
         );
 
-    final BoxDecoration disbaledCellsDecoration = widget.disabledCellsDecoration;
+    final BoxDecoration disbaledCellsDecoration =
+        widget.disabledCellsDecoration;
 
     //
     //! current
@@ -355,11 +345,12 @@ class _YearsPickerState extends State<YearsPicker> {
           color: colorScheme.onPrimary,
         );
 
-    final BoxDecoration selectedCellDecoration = widget.selectedCellDecoration ??
-        BoxDecoration(
-          color: colorScheme.primary,
-          shape: BoxShape.circle,
-        );
+    final BoxDecoration selectedCellDecoration =
+        widget.selectedCellDecoration ??
+            BoxDecoration(
+              color: colorScheme.primary,
+              shape: BoxShape.circle,
+            );
 
     //
     //
@@ -372,7 +363,8 @@ class _YearsPickerState extends State<YearsPicker> {
           color: Theme.of(context).colorScheme.primary,
         );
 
-    final slidersColor = widget.slidersColor ?? Theme.of(context).colorScheme.primary;
+    final slidersColor =
+        widget.slidersColor ?? Theme.of(context).colorScheme.primary;
 
     final slidersSize = widget.slidersSize ?? 20;
 
@@ -413,7 +405,8 @@ class _YearsPickerState extends State<YearsPicker> {
               slidersColor: slidersColor,
               slidersSize: slidersSize,
               onDateTap: () => widget.onLeadingDateTap?.call(),
-              displayedDate: '${_displayedRange?.start.year} - ${_displayedRange?.end.year}',
+              displayedDate:
+                  '${_displayedRange?.start.year} - ${_displayedRange?.end.year}',
               onNextPage: () {
                 _pageController.nextPage(
                   duration: const Duration(milliseconds: 300),
