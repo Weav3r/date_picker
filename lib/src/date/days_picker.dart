@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../shared/device_orientation_builder.dart';
+import '../shared/types.dart';
+import '../shared/utils.dart';
 import 'days_view.dart';
 import '../shared/header.dart';
 import 'show_date_picker_dialog.dart';
@@ -22,9 +25,13 @@ import 'show_date_picker_dialog.dart';
 class DaysPicker extends StatefulWidget {
   /// Creates a days picker.
   ///
-  /// It will display a grid of days for the [initialDate]'s month. if that
-  /// is null, `DateTime.now()` will be used. The day
-  /// indicated by [selectedDate] will be selected if provided.
+  /// It will display a grid of days for the [initialDate]'s month. If [initialDate]
+  /// is null, `DateTime.now()` will be used. If `DateTime.now()` does not fall within
+  /// the valid range of [minDate] and [maxDate], it will fall back to the nearest
+  /// valid date from `DateTime.now()`, selecting the [maxDate] if `DateTime.now()` is
+  /// after the valid range, or [minDate] if before.
+  ///
+  /// The day indicated by [selectedDate] will be selected if provided.
   ///
   /// The optional [onDateSelected] callback will be called if provided when a date
   /// is selected.
@@ -49,8 +56,8 @@ class DaysPicker extends StatefulWidget {
     this.daysOfTheWeekTextStyle,
     this.enabledCellsTextStyle,
     this.enabledCellsDecoration = const BoxDecoration(),
-    this.disbaledCellsTextStyle,
-    this.disbaledCellsDecoration = const BoxDecoration(),
+    this.disabledCellsTextStyle,
+    this.disabledCellsDecoration = const BoxDecoration(),
     this.currentDateTextStyle,
     this.currentDateDecoration,
     this.selectedCellTextStyle,
@@ -64,13 +71,15 @@ class DaysPicker extends StatefulWidget {
     this.splashColor,
     this.splashRadius,
     this.centerLeadingDate = false,
+    this.previousPageSemanticLabel = 'Previous Day',
+    this.nextPageSemanticLabel = 'Next Day',
+    this.disabledDayPredicate,
   }) {
     assert(!minDate.isAfter(maxDate), "minDate can't be after maxDate");
     assert(
       () {
         if (initialDate == null) return true;
-        final init =
-            DateTime(initialDate!.year, initialDate!.month, initialDate!.day);
+        final init = DateTime(initialDate!.year, initialDate!.month, initialDate!.day);
 
         final min = DateTime(minDate.year, minDate.month, minDate.day);
 
@@ -81,8 +90,7 @@ class DaysPicker extends StatefulWidget {
     assert(
       () {
         if (initialDate == null) return true;
-        final init =
-            DateTime(initialDate!.year, initialDate!.month, initialDate!.day);
+        final init = DateTime(initialDate!.year, initialDate!.month, initialDate!.day);
 
         final max = DateTime(maxDate.year, maxDate.month, maxDate.day);
         return init.isBefore(max) || init.isAtSameMomentAs(max);
@@ -91,8 +99,11 @@ class DaysPicker extends StatefulWidget {
     );
   }
 
-  /// The date which will be displayed on first opening.
-  /// If not specified, the picker will default to `DateTime.now()` date.
+  /// The date which will be displayed on first opening. If not specified, the picker
+  /// will default to `DateTime.now()`. If `DateTime.now()` does not fall within the
+  /// valid range of [minDate] and [maxDate], it will automatically adjust to the nearest
+  /// valid date, selecting [maxDate] if `DateTime.now()` is after the valid range, or
+  /// [minDate] if it is before.
   ///
   /// Note that only dates are considered. time fields are ignored.
   final DateTime? initialDate;
@@ -149,12 +160,12 @@ class DaysPicker extends StatefulWidget {
   ///
   /// defaults to [TextTheme.titleLarge] with a [FontWeight.normal]
   /// and [ColorScheme.onSurface] color with 30% opacity.
-  final TextStyle? disbaledCellsTextStyle;
+  final TextStyle? disabledCellsTextStyle;
 
   /// The cell decoration of cells which are not selectable.
   ///
   /// defaults to empty [BoxDecoration].
-  final BoxDecoration disbaledCellsDecoration;
+  final BoxDecoration disabledCellsDecoration;
 
   /// The text style of the current date.
   ///
@@ -203,7 +214,9 @@ class DaysPicker extends StatefulWidget {
 
   /// The highlight color of the ink response when pressed.
   ///
-  /// defaults to [Theme.highlightColor].
+  /// defaults to the color of [selectedCellDecoration] with 30% opacity,
+  /// if [selectedCellDecoration] is null will fall back to
+  /// [ColorScheme.onPrimary] with 30% opacity.
   final Color? highlightColor;
 
   /// The radius of the ink splash.
@@ -215,6 +228,15 @@ class DaysPicker extends StatefulWidget {
   ///
   final bool centerLeadingDate;
 
+  /// Semantic label for button to go to the previous page.
+  final String? previousPageSemanticLabel;
+
+  /// Semantic label for button to go to the next page.
+  final String? nextPageSemanticLabel;
+
+  /// A predicate function used to determine if a given day should be disabled.
+  final DatePredicate? disabledDayPredicate;
+
   @override
   State<DaysPicker> createState() => _DaysPickerState();
 }
@@ -224,18 +246,15 @@ class _DaysPickerState extends State<DaysPicker> {
   DateTime? _selectedDate;
   final GlobalKey _pageViewKey = GlobalKey();
   late final PageController _pageController;
-  // Represents the maximum height for a calendar with 6 weeks.
-  // In scenarios where a month starts on the last day of a week,
-  // it may extend into the first day of the sixth week to
-  // accommodate the full month.
-  double maxHeight = 52 * 7;
+
+  // double maxHeight = 52 * 7;
 
   @override
   void initState() {
-    _displayedMonth = DateUtils.dateOnly(widget.initialDate ?? DateTime.now());
-    _selectedDate = widget.selectedDate != null
-        ? DateUtils.dateOnly(widget.selectedDate!)
-        : null;
+    final clampedInitailDate =
+        DateUtilsX.clampDateToRange(max: widget.maxDate, min: widget.minDate, date: DateTime.now());
+    _displayedMonth = DateUtils.dateOnly(widget.initialDate ?? clampedInitailDate);
+    _selectedDate = widget.selectedDate != null ? DateUtils.dateOnly(widget.selectedDate!) : null;
     _pageController = PageController(
       initialPage: DateUtils.monthDelta(widget.minDate, _displayedMonth!),
     );
@@ -249,8 +268,9 @@ class _DaysPickerState extends State<DaysPicker> {
     // but for makeing debuging easy, we will navigate to the initial date again
     // if it changes.
     if (oldWidget.initialDate != widget.initialDate) {
-      _displayedMonth =
-          DateUtils.dateOnly(widget.initialDate ?? DateTime.now());
+      final clampedInitailDate =
+          DateUtilsX.clampDateToRange(max: widget.maxDate, min: widget.minDate, date: DateTime.now());
+      _displayedMonth = DateUtils.dateOnly(widget.initialDate ?? clampedInitailDate);
 
       _pageController.jumpToPage(
         DateUtils.monthDelta(widget.minDate, _displayedMonth!),
@@ -258,9 +278,7 @@ class _DaysPickerState extends State<DaysPicker> {
     }
 
     if (oldWidget.selectedDate != widget.selectedDate) {
-      _selectedDate = widget.selectedDate != null
-          ? DateUtils.dateOnly(widget.selectedDate!)
-          : null;
+      _selectedDate = widget.selectedDate != null ? DateUtils.dateOnly(widget.selectedDate!) : null;
     }
     super.didUpdateWidget(oldWidget);
   }
@@ -282,7 +300,7 @@ class _DaysPickerState extends State<DaysPicker> {
     //
     final TextStyle daysOfTheWeekTextStyle = widget.daysOfTheWeekTextStyle ??
         textTheme.titleSmall!.copyWith(
-          color: colorScheme.onSurface.withOpacity(0.30),
+          color: colorScheme.onSurface.withValues(alpha: 0.30),
           fontWeight: FontWeight.bold,
           fontSize: 14,
         );
@@ -305,14 +323,13 @@ class _DaysPickerState extends State<DaysPicker> {
     //
     //
 
-    final TextStyle disbaledCellsTextStyle = widget.disbaledCellsTextStyle ??
+    final TextStyle disabledCellsTextStyle = widget.disabledCellsTextStyle ??
         textTheme.titleLarge!.copyWith(
           fontWeight: FontWeight.normal,
-          color: colorScheme.onSurface.withOpacity(0.30),
+          color: colorScheme.onSurface.withValues(alpha: 0.30),
         );
 
-    final BoxDecoration disbaledCellsDecoration =
-        widget.disbaledCellsDecoration;
+    final BoxDecoration disbaledCellsDecoration = widget.disabledCellsDecoration;
 
     //
     //! current
@@ -342,12 +359,11 @@ class _DaysPickerState extends State<DaysPicker> {
           color: colorScheme.onPrimary,
         );
 
-    final BoxDecoration selectedCellDecoration =
-        widget.selectedCellDecoration ??
-            BoxDecoration(
-              color: colorScheme.primary,
-              shape: BoxShape.circle,
-            );
+    final BoxDecoration selectedCellDecoration = widget.selectedCellDecoration ??
+        BoxDecoration(
+          color: colorScheme.primary,
+          shape: BoxShape.circle,
+        );
 
     //
     //
@@ -367,101 +383,116 @@ class _DaysPickerState extends State<DaysPicker> {
     //
     //! splash
     final splashColor = widget.splashColor ??
-        selectedCellDecoration.color?.withOpacity(0.3) ??
-        colorScheme.primary.withOpacity(0.3);
+        selectedCellDecoration.color?.withValues(alpha: 0.3) ??
+        colorScheme.primary.withValues(alpha: 0.3);
 
-    final highlightColor =
-        widget.highlightColor ?? Theme.of(context).highlightColor;
+    final highlightColor = widget.highlightColor ??
+        selectedCellDecoration.color?.withValues(alpha: 0.3) ??
+        colorScheme.primary.withValues(alpha: 0.3);
     //
     //
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Header(
-          centerLeadingDate: widget.centerLeadingDate,
-          leadingDateTextStyle: leadingDateTextStyle,
-          slidersColor: slidersColor,
-          slidersSize: slidersSize,
-          onDateTap: () => widget.onLeadingDateTap?.call(),
-          displayedDate: MaterialLocalizations.of(context)
-              .formatMonthYear(_displayedMonth!)
-              .replaceAll('٩', '9')
-              .replaceAll('٨', '8')
-              .replaceAll('٧', '7')
-              .replaceAll('٦', '6')
-              .replaceAll('٥', '5')
-              .replaceAll('٤', '4')
-              .replaceAll('٣', '3')
-              .replaceAll('٢', '2')
-              .replaceAll('١', '1')
-              .replaceAll('٠', '0'),
-          onNextPage: () {
-            _pageController.nextPage(
-              duration: const Duration(milliseconds: 300),
-              curve: Curves.ease,
-            );
-          },
-          onPreviousPage: () {
-            _pageController.previousPage(
-              duration: const Duration(milliseconds: 300),
-              curve: Curves.ease,
-            );
-          },
-        ),
-        const SizedBox(height: 10),
-        SizedBox(
-          key: ValueKey(maxHeight),
-          height: maxHeight,
-          child: PageView.builder(
-            scrollDirection: Axis.horizontal,
-            key: _pageViewKey,
-            controller: _pageController,
-            itemCount: DateUtils.monthDelta(widget.minDate, widget.maxDate) + 1,
-            onPageChanged: (monthPage) {
-              final DateTime monthDate =
-                  DateUtils.addMonthsToMonthDate(widget.minDate, monthPage);
+    return DeviceOrientationBuilder(builder: (context, o) {
+      late final Size size;
+      switch (o) {
+        case Orientation.portrait:
+          size = const Size(328.0, 402.0);
+          break;
+        case Orientation.landscape:
+          size = const Size(328.0, 300.0);
+          break;
+      }
 
-              setState(() {
-                _displayedMonth = monthDate;
-              });
-            },
-            itemBuilder: (context, index) {
-              final DateTime month =
-                  DateUtils.addMonthsToMonthDate(widget.minDate, index);
+      return LimitedBox(
+        maxHeight: size.height,
+        maxWidth: size.width,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Header(
+              centerLeadingDate: widget.centerLeadingDate,
+              leadingDateTextStyle: leadingDateTextStyle,
+              slidersColor: slidersColor,
+              slidersSize: slidersSize,
+              onDateTap: () => widget.onLeadingDateTap?.call(),
+              displayedDate: MaterialLocalizations.of(context)
+                  .formatMonthYear(_displayedMonth!)
+                  .replaceAll('٩', '9')
+                  .replaceAll('٨', '8')
+                  .replaceAll('٧', '7')
+                  .replaceAll('٦', '6')
+                  .replaceAll('٥', '5')
+                  .replaceAll('٤', '4')
+                  .replaceAll('٣', '3')
+                  .replaceAll('٢', '2')
+                  .replaceAll('١', '1')
+                  .replaceAll('٠', '0'),
+              onNextPage: () {
+                _pageController.nextPage(
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.ease,
+                );
+              },
+              onPreviousPage: () {
+                _pageController.previousPage(
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.ease,
+                );
+              },
+              previousPageSemanticLabel: widget.previousPageSemanticLabel,
+              nextPageSemanticLabel: widget.nextPageSemanticLabel,
+            ),
+            const SizedBox(height: 10),
+            Expanded(
+              child: PageView.builder(
+                scrollDirection: Axis.horizontal,
+                key: _pageViewKey,
+                controller: _pageController,
+                itemCount: DateUtils.monthDelta(widget.minDate, widget.maxDate) + 1,
+                onPageChanged: (monthPage) {
+                  final DateTime monthDate = DateUtils.addMonthsToMonthDate(widget.minDate, monthPage);
 
-              return DaysView(
-                key: ValueKey<DateTime>(month),
-                currentDate:
-                    DateUtils.dateOnly(widget.currentDate ?? DateTime.now()),
-                maxDate: DateUtils.dateOnly(widget.maxDate),
-                minDate: DateUtils.dateOnly(widget.minDate),
-                displayedMonth: month,
-                selectedDate: _selectedDate,
-                daysOfTheWeekTextStyle: daysOfTheWeekTextStyle,
-                enabledCellsTextStyle: enabledCellsTextStyle,
-                enabledCellsDecoration: enabledCellsDecoration,
-                disbaledCellsTextStyle: disbaledCellsTextStyle,
-                disbaledCellsDecoration: disbaledCellsDecoration,
-                currentDateDecoration: currentDateDecoration,
-                currentDateTextStyle: currentDateTextStyle,
-                selectedDayDecoration: selectedCellDecoration,
-                selectedDayTextStyle: selectedCellTextStyle,
-                highlightColor: highlightColor,
-                splashColor: splashColor,
-                splashRadius: widget.splashRadius,
-                onChanged: (value) {
                   setState(() {
-                    _selectedDate = value;
+                    _displayedMonth = monthDate;
                   });
-                  widget.onDateSelected?.call(value);
                 },
-              );
-            },
-          ),
+                itemBuilder: (context, index) {
+                  final DateTime month = DateUtils.addMonthsToMonthDate(widget.minDate, index);
+
+                  return DaysView(
+                    key: ValueKey<DateTime>(month),
+                    currentDate: DateUtils.dateOnly(widget.currentDate ?? DateTime.now()),
+                    maxDate: DateUtils.dateOnly(widget.maxDate),
+                    minDate: DateUtils.dateOnly(widget.minDate),
+                    displayedMonth: month,
+                    selectedDate: _selectedDate,
+                    daysOfTheWeekTextStyle: daysOfTheWeekTextStyle,
+                    enabledCellsTextStyle: enabledCellsTextStyle,
+                    enabledCellsDecoration: enabledCellsDecoration,
+                    disabledCellsTextStyle: disabledCellsTextStyle,
+                    disabledCellsDecoration: disbaledCellsDecoration,
+                    currentDateDecoration: currentDateDecoration,
+                    currentDateTextStyle: currentDateTextStyle,
+                    selectedDayDecoration: selectedCellDecoration,
+                    selectedDayTextStyle: selectedCellTextStyle,
+                    highlightColor: highlightColor,
+                    splashColor: splashColor,
+                    splashRadius: widget.splashRadius,
+                    disabledDayPredicate: widget.disabledDayPredicate,
+                    onChanged: (value) {
+                      setState(() {
+                        _selectedDate = value;
+                      });
+                      widget.onDateSelected?.call(value);
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
         ),
-      ],
-    );
+      );
+    });
   }
 }

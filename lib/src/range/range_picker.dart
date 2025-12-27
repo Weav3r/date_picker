@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../shared/month_picker.dart';
 import '../shared/picker_type.dart';
+import '../shared/utils.dart';
 import '../shared/year_picker.dart';
 import 'range_days_picker.dart';
 
@@ -23,9 +24,13 @@ import 'range_days_picker.dart';
 class RangeDatePicker extends StatefulWidget {
   /// Creates a calendar range picker.
   ///
-  /// It will display a grid of days for the [initialDate]'s month. if that
-  /// is null, `DateTime.now()` will be used. The day
-  /// indicated by [selectedRange] will be selected if provided.
+  /// It will display a grid of days for the [initialDate]'s month. If [initialDate]
+  /// is null, `DateTime.now()` will be used. If `DateTime.now()` does not fall within
+  /// the valid range of [minDate] and [maxDate], it will fall back to the nearest
+  /// valid date from `DateTime.now()`, selecting the [maxDate] if `DateTime.now()` is
+  /// after the valid range, or [minDate] if before.
+  ///
+  /// The day indicated by [selectedRange] will be selected if provided.
   ///
   /// The optional [onRangeSelected] callback will be called if provided
   /// when a range is selected.
@@ -49,6 +54,9 @@ class RangeDatePicker extends StatefulWidget {
     required this.maxDate,
     required this.minDate,
     this.onRangeSelected,
+    this.onLeadingDateTap,
+    this.onStartDateChanged,
+    this.onEndDateChanged,
     this.currentDate,
     this.initialDate,
     this.selectedRange,
@@ -57,14 +65,14 @@ class RangeDatePicker extends StatefulWidget {
     this.daysOfTheWeekTextStyle,
     this.enabledCellsTextStyle,
     this.enabledCellsDecoration = const BoxDecoration(),
-    this.disbaledCellsTextStyle,
-    this.disbaledCellsDecoration = const BoxDecoration(),
+    this.disabledCellsTextStyle,
+    this.disabledCellsDecoration = const BoxDecoration(),
     this.currentDateTextStyle,
     this.currentDateDecoration,
     this.selectedCellsTextStyle,
     this.selectedCellsDecoration,
-    this.singelSelectedCellTextStyle,
-    this.singelSelectedCellDecoration,
+    this.singleSelectedCellTextStyle,
+    this.singleSelectedCellDecoration,
     this.leadingDateTextStyle,
     this.slidersColor,
     this.slidersSize,
@@ -72,6 +80,8 @@ class RangeDatePicker extends StatefulWidget {
     this.splashColor,
     this.splashRadius,
     this.centerLeadingDate = false,
+    this.previousPageSemanticLabel,
+    this.nextPageSemanticLabel,
   }) {
     assert(!minDate.isAfter(maxDate), "minDate can't be after maxDate");
   }
@@ -88,14 +98,26 @@ class RangeDatePicker extends StatefulWidget {
   /// Note that only dates are considered. time fields are ignored.
   final DateTime? currentDate;
 
-  /// The date to which the picker will be initially opened.
-  /// If not specified, the picker will default to today's date.
+  /// The date which will be displayed on first opening. If not specified, the picker
+  /// will default to `DateTime.now()`. If `DateTime.now()` does not fall within the
+  /// valid range of [minDate] and [maxDate], it will automatically adjust to the nearest
+  /// valid date, selecting [maxDate] if `DateTime.now()` is after the valid range, or
+  /// [minDate] if it is before.
   ///
   /// Note that only dates are considered. time fields are ignored.
   final DateTime? initialDate;
 
   /// Called when the user picks a range.
   final ValueChanged<DateTimeRange>? onRangeSelected;
+
+  /// Called when the user selects between months/years/days
+  final VoidCallback? onLeadingDateTap;
+
+  /// Called when the user picks a new start date to the range
+  final ValueChanged<DateTime>? onStartDateChanged;
+
+  /// Called when the user picks an end date to the range
+  final ValueChanged<DateTime>? onEndDateChanged;
 
   /// The earliest date the user is permitted to pick.
   ///
@@ -138,12 +160,12 @@ class RangeDatePicker extends StatefulWidget {
   ///
   /// defaults to [TextTheme.titleLarge] with a [FontWeight.normal]
   /// and [ColorScheme.onSurface] color with 30% opacity.
-  final TextStyle? disbaledCellsTextStyle;
+  final TextStyle? disabledCellsTextStyle;
 
   /// The cell decoration of cells which are not selectable.
   ///
   /// defaults to empty [BoxDecoration].
-  final BoxDecoration disbaledCellsDecoration;
+  final BoxDecoration disabledCellsDecoration;
 
   /// The text style of the current date.
   ///
@@ -182,16 +204,16 @@ class RangeDatePicker extends StatefulWidget {
   ///
   /// defaults to [TextTheme.titleLarge] with a [FontWeight.normal]
   /// and [ColorScheme.onPrimary] color
-  final TextStyle? singelSelectedCellTextStyle;
+  final TextStyle? singleSelectedCellTextStyle;
 
   /// The decoration for a cell representing:
   ///
   /// 1. A single cell when initially selected.
   /// 2. The leading/trailing cell of a selected range.
   ///
-  /// If not provided, `singelSelectedCellDecoration` is a circle with the color specified
+  /// If not provided, `singleSelectedCellDecoration` is a circle with the color specified
   /// in `selectedCellsDecoration`, using [ColorScheme.primary].
-  final BoxDecoration? singelSelectedCellDecoration;
+  final BoxDecoration? singleSelectedCellDecoration;
 
   /// The text style of leading date showing in the header.
   ///
@@ -217,7 +239,8 @@ class RangeDatePicker extends StatefulWidget {
 
   /// The highlight color of the ink response when pressed.
   ///
-  /// defaults to [Theme.highlightColor].
+  /// defaults to the color of [selectedCellsDecoration],
+  /// if null will fall back to [ColorScheme.onPrimary] with 30% opacity.
   final Color? highlightColor;
 
   /// The radius of the ink splash.
@@ -228,6 +251,16 @@ class RangeDatePicker extends StatefulWidget {
   /// <       December 2023      >
   ///
   final bool centerLeadingDate;
+
+  /// Semantic label for button to go to the previous page.
+  ///
+  /// defaults to `Previous Day/Month/Year` according to picker type.
+  final String? previousPageSemanticLabel;
+
+  /// Semantic label for button to go to the next page.
+  ///
+  /// defaults to `Next Day/Month/Year` according to picker type.
+  final String? nextPageSemanticLabel;
 
   @override
   State<RangeDatePicker> createState() => _RangeDatePickerState();
@@ -242,7 +275,10 @@ class _RangeDatePickerState extends State<RangeDatePicker> {
   @override
   void initState() {
     _pickerType = widget.initialPickerType;
-    _diplayedDate = DateUtils.dateOnly(widget.initialDate ?? DateTime.now());
+    final clampedInitailDate = DateUtilsX.clampDateToRange(
+        max: widget.maxDate, min: widget.minDate, date: DateTime.now());
+    _diplayedDate =
+        DateUtils.dateOnly(widget.initialDate ?? clampedInitailDate);
 
     if (widget.selectedRange != null) {
       _selectedStartDate = DateUtils.dateOnly(widget.selectedRange!.start);
@@ -269,7 +305,10 @@ class _RangeDatePickerState extends State<RangeDatePicker> {
     }
 
     if (widget.initialDate != oldWidget.initialDate) {
-      _diplayedDate = DateUtils.dateOnly(widget.initialDate ?? DateTime.now());
+      final clampedInitailDate = DateUtilsX.clampDateToRange(
+          max: widget.maxDate, min: widget.minDate, date: DateTime.now());
+      _diplayedDate =
+          DateUtils.dateOnly(widget.initialDate ?? clampedInitailDate);
     }
 
     super.didUpdateWidget(oldWidget);
@@ -293,30 +332,36 @@ class _RangeDatePickerState extends State<RangeDatePicker> {
             daysOfTheWeekTextStyle: widget.daysOfTheWeekTextStyle,
             enabledCellsTextStyle: widget.enabledCellsTextStyle,
             enabledCellsDecoration: widget.enabledCellsDecoration,
-            disbaledCellsTextStyle: widget.disbaledCellsTextStyle,
-            disbaledCellsDecoration: widget.disbaledCellsDecoration,
+            disabledCellsTextStyle: widget.disabledCellsTextStyle,
+            disabledCellsDecoration: widget.disabledCellsDecoration,
             currentDateDecoration: widget.currentDateDecoration,
             currentDateTextStyle: widget.currentDateTextStyle,
             selectedCellsDecoration: widget.selectedCellsDecoration,
             selectedCellsTextStyle: widget.selectedCellsTextStyle,
-            singelSelectedCellTextStyle: widget.singelSelectedCellTextStyle,
-            singelSelectedCellDecoration: widget.singelSelectedCellDecoration,
+            singleSelectedCellTextStyle: widget.singleSelectedCellTextStyle,
+            singleSelectedCellDecoration: widget.singleSelectedCellDecoration,
             slidersColor: widget.slidersColor,
             slidersSize: widget.slidersSize,
             leadingDateTextStyle: widget.leadingDateTextStyle,
             splashColor: widget.splashColor,
             highlightColor: widget.highlightColor,
             splashRadius: widget.splashRadius,
+            previousPageSemanticLabel: widget.previousPageSemanticLabel,
+            nextPageSemanticLabel: widget.nextPageSemanticLabel,
             onLeadingDateTap: () {
               setState(() {
                 _pickerType = PickerType.months;
               });
+
+              widget.onLeadingDateTap?.call();
             },
             onEndDateChanged: (date) {
               setState(() {
                 _selectedEndDate = date;
               });
 
+              widget.onEndDateChanged?.call(date);
+              
               // this should never be null
               if (_selectedStartDate != null) {
                 widget.onRangeSelected?.call(
@@ -332,6 +377,8 @@ class _RangeDatePickerState extends State<RangeDatePicker> {
                 _selectedStartDate = date;
                 _selectedEndDate = null;
               });
+
+              widget.onStartDateChanged?.call(date);
             },
           ),
         );
@@ -348,26 +395,34 @@ class _RangeDatePickerState extends State<RangeDatePicker> {
                 DateUtils.dateOnly(widget.currentDate ?? DateTime.now()),
             currentDateDecoration: widget.currentDateDecoration,
             currentDateTextStyle: widget.currentDateTextStyle,
-            disbaledCellsDecoration: widget.disbaledCellsDecoration,
-            disbaledCellsTextStyle: widget.disbaledCellsTextStyle,
+            disabledCellsDecoration: widget.disabledCellsDecoration,
+            disabledCellsTextStyle: widget.disabledCellsTextStyle,
             enabledCellsDecoration: widget.enabledCellsDecoration,
             enabledCellsTextStyle: widget.enabledCellsTextStyle,
-            selectedCellDecoration: widget.singelSelectedCellDecoration,
-            selectedCellTextStyle: widget.singelSelectedCellTextStyle,
+            selectedCellDecoration: widget.singleSelectedCellDecoration,
+            selectedCellTextStyle: widget.singleSelectedCellTextStyle,
             slidersColor: widget.slidersColor,
             slidersSize: widget.slidersSize,
             leadingDateTextStyle: widget.leadingDateTextStyle,
             splashColor: widget.splashColor,
             highlightColor: widget.highlightColor,
             splashRadius: widget.splashRadius,
+            previousPageSemanticLabel: widget.previousPageSemanticLabel,
+            nextPageSemanticLabel: widget.nextPageSemanticLabel,
             onLeadingDateTap: () {
               setState(() {
                 _pickerType = PickerType.years;
               });
             },
             onDateSelected: (selectedMonth) {
+              // clamped the initial date to fall between min and max date.
+              final clampedSelectedMonth = DateUtilsX.clampDateToRange(
+                min: widget.minDate,
+                max: widget.maxDate,
+                date: selectedMonth,
+              );
               setState(() {
-                _diplayedDate = selectedMonth;
+                _diplayedDate = clampedSelectedMonth;
                 _pickerType = PickerType.days;
               });
             },
@@ -386,21 +441,29 @@ class _RangeDatePickerState extends State<RangeDatePicker> {
                 DateUtils.dateOnly(widget.currentDate ?? DateTime.now()),
             currentDateDecoration: widget.currentDateDecoration,
             currentDateTextStyle: widget.currentDateTextStyle,
-            disbaledCellsDecoration: widget.disbaledCellsDecoration,
-            disbaledCellsTextStyle: widget.disbaledCellsTextStyle,
+            disabledCellsDecoration: widget.disabledCellsDecoration,
+            disabledCellsTextStyle: widget.disabledCellsTextStyle,
             enabledCellsDecoration: widget.enabledCellsDecoration,
             enabledCellsTextStyle: widget.enabledCellsTextStyle,
-            selectedCellDecoration: widget.singelSelectedCellDecoration,
-            selectedCellTextStyle: widget.singelSelectedCellTextStyle,
+            selectedCellDecoration: widget.singleSelectedCellDecoration,
+            selectedCellTextStyle: widget.singleSelectedCellTextStyle,
             slidersColor: widget.slidersColor,
             slidersSize: widget.slidersSize,
             leadingDateTextStyle: widget.leadingDateTextStyle,
             splashColor: widget.splashColor,
             highlightColor: widget.highlightColor,
             splashRadius: widget.splashRadius,
+            previousPageSemanticLabel: widget.previousPageSemanticLabel,
+            nextPageSemanticLabel: widget.nextPageSemanticLabel,
             onDateSelected: (selectedYear) {
+              // clamped the initial date to fall between min and max date.
+              final clampedSelectedYear = DateUtilsX.clampDateToRange(
+                min: widget.minDate,
+                max: widget.maxDate,
+                date: selectedYear,
+              );
               setState(() {
-                _diplayedDate = selectedYear;
+                _diplayedDate = clampedSelectedYear;
                 _pickerType = PickerType.months;
               });
             },

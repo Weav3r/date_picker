@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
+import 'device_orientation_builder.dart';
 import 'header.dart';
 import '../date/show_date_picker_dialog.dart';
+import 'utils.dart';
 import 'year_view.dart';
 
 /// Displays a grid of years which allows the user to select a
@@ -22,9 +24,11 @@ import 'year_view.dart';
 class YearsPicker extends StatefulWidget {
   /// Creates a year picker.
   ///
-  /// It will display a grid of years for the [initialDate]'s year. if that
-  /// is null, `DateTime.now()` will be used. The year
-  /// indicated by [selectedDate] will be selected if provided.
+  /// It will display a grid of years for the [initialDate]'s year. If [initialDate]
+  /// is null, `DateTime.now()` will be used. If `DateTime.now()` does not fall within
+  /// the valid range of [minDate] and [maxDate], it will fall back to the nearest
+  /// valid date from `DateTime.now()`, selecting the [maxDate] if `DateTime.now()` is
+  /// after the valid range, or [minDate] if before.
   ///
   /// The optional [onDateSelected] callback will be called if provided when a date
   /// is selected.
@@ -38,7 +42,7 @@ class YearsPicker extends StatefulWidget {
   /// `DateTime.now()` will be used.
   ///
   /// For each of these [DateTime] parameters, only
-  /// their dates are considered. Their time fields are ignored.
+  /// their year are considered. Their time, month and day fields are ignored.
   YearsPicker({
     super.key,
     required this.minDate,
@@ -48,8 +52,8 @@ class YearsPicker extends StatefulWidget {
     this.selectedDate,
     this.enabledCellsTextStyle,
     this.enabledCellsDecoration = const BoxDecoration(),
-    this.disbaledCellsTextStyle,
-    this.disbaledCellsDecoration = const BoxDecoration(),
+    this.disabledCellsTextStyle,
+    this.disabledCellsDecoration = const BoxDecoration(),
     this.currentDateTextStyle,
     this.currentDateDecoration,
     this.selectedCellTextStyle,
@@ -63,16 +67,17 @@ class YearsPicker extends StatefulWidget {
     this.splashColor,
     this.splashRadius,
     this.centerLeadingDate = false,
+    this.previousPageSemanticLabel = 'Previous Year',
+    this.nextPageSemanticLabel = 'Next Year',
   }) {
     assert(!minDate.isAfter(maxDate), "minDate can't be after maxDate");
 
     assert(
       () {
         if (initialDate == null) return true;
-        final init =
-            DateTime(initialDate!.year, initialDate!.month, initialDate!.day);
+        final init = DateUtilsX.yearOnly(initialDate!);
 
-        final min = DateTime(minDate.year, minDate.month, minDate.day);
+        final min = DateUtilsX.yearOnly(minDate);
 
         return init.isAfter(min) || init.isAtSameMomentAs(min);
       }(),
@@ -81,31 +86,33 @@ class YearsPicker extends StatefulWidget {
     assert(
       () {
         if (initialDate == null) return true;
-        final init =
-            DateTime(initialDate!.year, initialDate!.month, initialDate!.day);
+        final init = DateUtilsX.yearOnly(initialDate!);
 
-        final max = DateTime(maxDate.year, maxDate.month, maxDate.day);
+        final max = DateUtilsX.yearOnly(maxDate);
         return init.isBefore(max) || init.isAtSameMomentAs(max);
       }(),
       'initialDate $initialDate must be on or before maxDate $maxDate.',
     );
   }
 
-  /// The date which will be displayed on first opening.
-  /// If not specified, the picker will default to `DateTime.now()` date.
+  /// The date which will be displayed on first opening. If not specified, the picker
+  /// will default to `DateTime.now()`. If `DateTime.now()` does not fall within the
+  /// valid range of [minDate] and [maxDate], it will automatically adjust to the nearest
+  /// valid date, selecting [maxDate] if `DateTime.now()` is after the valid range, or
+  /// [minDate] if it is before.
   ///
-  /// Note that only dates are considered. time fields are ignored.
+  /// Note that only year are considered. time, month and day fields are ignored.
   final DateTime? initialDate;
 
   /// The date to which the picker will consider as current date. e.g (today).
   /// If not specified, the picker will default to `DateTime.now()` date.
   ///
-  /// Note that only dates are considered. time fields are ignored.
+  /// Note that only year are considered. time, month and day fields are ignored.
   final DateTime? currentDate;
 
   /// The initially selected date when the picker is first opened.
   ///
-  /// Note that only dates are considered. time fields are ignored.
+  /// Note that only year are considered. time, month and day fields are ignored.
   final DateTime? selectedDate;
 
   /// Called when the user picks a date.
@@ -115,14 +122,14 @@ class YearsPicker extends StatefulWidget {
   ///
   /// This date must be on or before the [maxDate].
   ///
-  /// Note that only dates are considered. time fields are ignored.
+  /// Note that only year are considered. time, month and day fields are ignored.
   final DateTime minDate;
 
   /// The latest date the user is permitted to pick.
   ///
   /// This date must be on or after the [minDate].
   ///
-  /// Note that only dates are considered. time fields are ignored.
+  /// Note that only year are considered. time, month and day fields are ignored.
   final DateTime maxDate;
 
   /// Called when the user tap on the leading date.
@@ -143,12 +150,12 @@ class YearsPicker extends StatefulWidget {
   ///
   /// defaults to [TextTheme.titleLarge] with a [FontWeight.normal]
   /// and [ColorScheme.onSurface] color with 30% opacity.
-  final TextStyle? disbaledCellsTextStyle;
+  final TextStyle? disabledCellsTextStyle;
 
   /// The cell decoration of cells which are not selectable.
   ///
   /// defaults to empty [BoxDecoration].
-  final BoxDecoration disbaledCellsDecoration;
+  final BoxDecoration disabledCellsDecoration;
 
   /// The text style of the current date.
   ///
@@ -197,7 +204,9 @@ class YearsPicker extends StatefulWidget {
 
   /// The highlight color of the ink response when pressed.
   ///
-  /// defaults to [Theme.highlightColor].
+  /// defaults to the color of [selectedCellDecoration] with 30% opacity,
+  /// if [selectedCellDecoration] is null will fall back to
+  /// [ColorScheme.onPrimary] with 30% opacity.
   final Color? highlightColor;
 
   /// The radius of the ink splash.
@@ -208,6 +217,12 @@ class YearsPicker extends StatefulWidget {
   /// <       December 2023      >
   ///
   final bool centerLeadingDate;
+
+  /// Semantic label for button to go to the previous page.
+  final String? previousPageSemanticLabel;
+
+  /// Semantic label for button to go to the next page.
+  final String? nextPageSemanticLabel;
 
   @override
   State<YearsPicker> createState() => _YearsPickerState();
@@ -228,9 +243,7 @@ class _YearsPickerState extends State<YearsPicker> {
       start: DateTime(widget.minDate.year + initialPageNumber * 12),
       end: DateTime(widget.minDate.year + initialPageNumber * 12 - 1 + 12),
     );
-    _selectedDate = widget.selectedDate != null
-        ? DateUtils.dateOnly(widget.selectedDate!)
-        : null;
+    _selectedDate = widget.selectedDate != null ? DateUtilsX.yearOnly(widget.selectedDate!) : null;
     super.initState();
   }
 
@@ -248,9 +261,7 @@ class _YearsPickerState extends State<YearsPicker> {
     }
 
     if (oldWidget.selectedDate != widget.selectedDate) {
-      _selectedDate = widget.selectedDate != null
-          ? DateUtils.dateOnly(widget.selectedDate!)
-          : null;
+      _selectedDate = widget.selectedDate != null ? DateUtilsX.yearOnly(widget.selectedDate!) : null;
     }
 
     super.didUpdateWidget(oldWidget);
@@ -266,11 +277,12 @@ class _YearsPickerState extends State<YearsPicker> {
   /// between [minDate] and [maxDate].
   ///
   /// Each page will contains 12 years in a 3 x 4 grid.
-  int get pageCount =>
-      ((widget.maxDate.year - widget.minDate.year + 1) / 12).ceil();
+  int get pageCount => ((widget.maxDate.year - widget.minDate.year + 1) / 12).ceil();
 
   int get initialPageNumber {
-    final init = widget.initialDate ?? DateTime.now();
+    final clampedInitailDate =
+        DateUtilsX.clampDateToRange(max: widget.maxDate, min: widget.minDate, date: DateTime.now());
+    final init = widget.initialDate ?? clampedInitailDate;
 
     final page = ((init.year - widget.minDate.year + 1) / 12).ceil() - 1;
     if (page < 0) return 0;
@@ -307,14 +319,13 @@ class _YearsPickerState extends State<YearsPicker> {
     //
     //
 
-    final TextStyle disbaledCellsTextStyle = widget.disbaledCellsTextStyle ??
+    final TextStyle disabledCellsTextStyle = widget.disabledCellsTextStyle ??
         textTheme.titleLarge!.copyWith(
           fontWeight: FontWeight.normal,
-          color: colorScheme.onSurface.withOpacity(0.30),
+          color: colorScheme.onSurface.withValues(alpha: 0.30),
         );
 
-    final BoxDecoration disbaledCellsDecoration =
-        widget.disbaledCellsDecoration;
+    final BoxDecoration disbaledCellsDecoration = widget.disabledCellsDecoration;
 
     //
     //! current
@@ -344,12 +355,11 @@ class _YearsPickerState extends State<YearsPicker> {
           color: colorScheme.onPrimary,
         );
 
-    final BoxDecoration selectedCellDecoration =
-        widget.selectedCellDecoration ??
-            BoxDecoration(
-              color: colorScheme.primary,
-              shape: BoxShape.circle,
-            );
+    final BoxDecoration selectedCellDecoration = widget.selectedCellDecoration ??
+        BoxDecoration(
+          color: colorScheme.primary,
+          shape: BoxShape.circle,
+        );
 
     //
     //
@@ -362,94 +372,110 @@ class _YearsPickerState extends State<YearsPicker> {
           color: Theme.of(context).colorScheme.primary,
         );
 
-    final slidersColor =
-        widget.slidersColor ?? Theme.of(context).colorScheme.primary;
+    final slidersColor = widget.slidersColor ?? Theme.of(context).colorScheme.primary;
 
     final slidersSize = widget.slidersSize ?? 20;
 
     //
     //! splash
     final splashColor = widget.splashColor ??
-        selectedCellDecoration.color?.withOpacity(0.3) ??
-        colorScheme.primary.withOpacity(0.3);
+        selectedCellDecoration.color?.withValues(alpha: 0.3) ??
+        colorScheme.primary.withValues(alpha: 0.3);
 
-    final highlightColor =
-        widget.highlightColor ?? Theme.of(context).highlightColor;
+    final highlightColor = widget.highlightColor ??
+        selectedCellDecoration.color?.withValues(alpha: 0.3) ??
+        colorScheme.primary.withValues(alpha: 0.3);
     //
     //
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Header(
-          centerLeadingDate: widget.centerLeadingDate,
-          leadingDateTextStyle: leadingDateTextStyle,
-          slidersColor: slidersColor,
-          slidersSize: slidersSize,
-          onDateTap: () => widget.onLeadingDateTap?.call(),
-          displayedDate:
-              '${_displayedRange?.start.year} - ${_displayedRange?.end.year}',
-          onNextPage: () {
-            _pageController.nextPage(
-              duration: const Duration(milliseconds: 300),
-              curve: Curves.ease,
-            );
-          },
-          onPreviousPage: () {
-            _pageController.previousPage(
-              duration: const Duration(milliseconds: 300),
-              curve: Curves.ease,
-            );
-          },
-        ),
-        const SizedBox(height: 10),
-        SizedBox(
-          key: const ValueKey<double>(78 * 4),
-          height: 78 * 4,
-          child: PageView.builder(
-            scrollDirection: Axis.horizontal,
-            key: _pageViewKey,
-            controller: _pageController,
-            itemCount: pageCount,
-            onPageChanged: (yearPage) {
-              setState(() {
-                _displayedRange = calculateDateRange(yearPage);
-              });
-            },
-            itemBuilder: (context, index) {
-              final yearRange = calculateDateRange(index);
-
-              return YearView(
-                key: ValueKey<DateTimeRange>(yearRange),
-                currentDate:
-                    DateUtils.dateOnly(widget.currentDate ?? DateTime.now()),
-                maxDate: DateUtils.dateOnly(widget.maxDate),
-                minDate: DateUtils.dateOnly(widget.minDate),
-                displayedYearRange: yearRange,
-                selectedDate: _selectedDate,
-                enabledCellsDecoration: enabledCellsDecoration,
-                enabledCellsTextStyle: enabledCellsTextStyle,
-                disbaledCellsDecoration: disbaledCellsDecoration,
-                disbaledCellsTextStyle: disbaledCellsTextStyle,
-                currentDateDecoration: currentDateDecoration,
-                currentDateTextStyle: currentDateTextStyle,
-                selectedCellDecoration: selectedCellDecoration,
-                selectedCellTextStyle: selectedCellTextStyle,
-                highlightColor: highlightColor,
-                splashColor: splashColor,
-                splashRadius: widget.splashRadius,
-                onChanged: (value) {
-                  widget.onDateSelected?.call(value);
+    return DeviceOrientationBuilder(builder: (context, o) {
+      late final Size size;
+      switch (o) {
+        case Orientation.portrait:
+          size = const Size(328.0, 402.0);
+          break;
+        case Orientation.landscape:
+          size = const Size(328.0, 300.0);
+          break;
+      }
+      return LimitedBox(
+        maxHeight: size.height,
+        maxWidth: size.width,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Header(
+              previousPageSemanticLabel: widget.previousPageSemanticLabel,
+              nextPageSemanticLabel: widget.nextPageSemanticLabel,
+              centerLeadingDate: widget.centerLeadingDate,
+              leadingDateTextStyle: leadingDateTextStyle,
+              slidersColor: slidersColor,
+              slidersSize: slidersSize,
+              onDateTap: () => widget.onLeadingDateTap?.call(),
+              displayedDate: '${_displayedRange?.start.year} - ${_displayedRange?.end.year}',
+              onNextPage: () {
+                _pageController.nextPage(
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.ease,
+                );
+              },
+              onPreviousPage: () {
+                _pageController.previousPage(
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.ease,
+                );
+              },
+            ),
+            const SizedBox(height: 10),
+            Flexible(
+              child: PageView.builder(
+                scrollDirection: Axis.horizontal,
+                key: _pageViewKey,
+                controller: _pageController,
+                itemCount: pageCount,
+                onPageChanged: (yearPage) {
                   setState(() {
-                    _selectedDate = value;
+                    _displayedRange = calculateDateRange(yearPage);
                   });
                 },
-              );
-            },
-          ),
+                itemBuilder: (context, index) {
+                  final yearRange = calculateDateRange(index);
+
+                  return YearView(
+                    key: ValueKey<DateTimeRange>(yearRange),
+                    currentDate: widget.currentDate != null
+                        ? DateUtilsX.yearOnly(widget.currentDate!)
+                        : DateUtilsX.yearOnly(DateTime.now()),
+                    maxDate: DateUtilsX.yearOnly(widget.maxDate),
+                    minDate: DateUtilsX.yearOnly(widget.minDate),
+                    displayedYearRange: yearRange,
+                    selectedDate: _selectedDate,
+                    enabledCellsDecoration: enabledCellsDecoration,
+                    enabledCellsTextStyle: enabledCellsTextStyle,
+                    disabledCellsDecoration: disbaledCellsDecoration,
+                    disabledCellsTextStyle: disabledCellsTextStyle,
+                    currentDateDecoration: currentDateDecoration,
+                    currentDateTextStyle: currentDateTextStyle,
+                    selectedCellDecoration: selectedCellDecoration,
+                    selectedCellTextStyle: selectedCellTextStyle,
+                    highlightColor: highlightColor,
+                    splashColor: splashColor,
+                    splashRadius: widget.splashRadius,
+                    onChanged: (value) {
+                      final selected = DateUtilsX.yearOnly(value);
+                      widget.onDateSelected?.call(selected);
+                      setState(() {
+                        _selectedDate = selected;
+                      });
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
         ),
-      ],
-    );
+      );
+    });
   }
 }

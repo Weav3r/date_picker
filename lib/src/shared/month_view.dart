@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
+import 'package:intl/intl.dart' show DateFormat;
 
 import 'picker_grid_delegate.dart';
+import 'utils.dart';
 
 /// Displays the months of a given year and allows choosing a month.
 ///
@@ -20,8 +21,8 @@ class MonthView extends StatelessWidget {
     required this.maxDate,
     required this.enabledCellsTextStyle,
     required this.enabledCellsDecoration,
-    required this.disbaledCellsTextStyle,
-    required this.disbaledCellsDecoration,
+    required this.disabledCellsTextStyle,
+    required this.disabledCellsDecoration,
     required this.currentDateTextStyle,
     required this.currentDateDecoration,
     required this.selectedCellTextStyle,
@@ -33,13 +34,9 @@ class MonthView extends StatelessWidget {
     assert(!minDate.isAfter(maxDate), "minDate can't be after maxDate");
     assert(() {
       if (selectedDate == null) return true;
-      final max = DateTime(maxDate.year, maxDate.month);
-      final min = DateTime(minDate.year, minDate.month);
-      final selected = DateTime(
-        selectedDate!.year,
-        selectedDate!.month,
-        // selectedDate!.day,
-      );
+      final max = DateUtilsX.monthOnly(maxDate);
+      final min = DateUtilsX.monthOnly(minDate);
+      final selected = DateUtilsX.monthOnly(selectedDate!);
 
       return (selected.isAfter(min) || selected.isAtSameMomentAs(min)) &&
           (selected.isBefore(max) || selected.isAtSameMomentAs(max));
@@ -50,12 +47,12 @@ class MonthView extends StatelessWidget {
   ///
   /// This date is highlighted in the picker.
   ///
-  /// Note that only dates are considered. time fields are ignored.
+  /// Note that only year & month are considered. time & day fields are ignored.
   final DateTime? selectedDate;
 
   /// The current month at the time the picker is displayed.
   ///
-  /// Note that only dates are considered. time fields are ignored.
+  /// Note that only year & month are considered. time & day fields are ignored.
   final DateTime currentDate;
 
   /// Called when the user picks a month.
@@ -65,19 +62,19 @@ class MonthView extends StatelessWidget {
   ///
   /// This date must be on or before the [maxDate].
   ///
-  /// Note that only dates are considered. time fields are ignored.
+  /// Note that only year & month are considered. time & day fields are ignored.
   final DateTime minDate;
 
   /// The latest date the user is permitted to pick.
   ///
   /// This date must be on or after the [minDate].
   ///
-  /// Note that only dates are considered. time fields are ignored.
+  /// Note that only year & month are considered. time & day fields are ignored.
   final DateTime maxDate;
 
   /// The year which its months are displayed by this picker.
   ///
-  /// Note that only dates are considered. time fields are ignored.
+  /// Note that only year & month are considered. time & day fields are ignored.
   final DateTime displayedDate;
 
   /// The text style of months which are selectable.
@@ -87,10 +84,10 @@ class MonthView extends StatelessWidget {
   final BoxDecoration enabledCellsDecoration;
 
   /// The text style of months which are not selectable.
-  final TextStyle disbaledCellsTextStyle;
+  final TextStyle disabledCellsTextStyle;
 
   /// The cell decoration of months which are not selectable.
-  final BoxDecoration disbaledCellsDecoration;
+  final BoxDecoration disabledCellsDecoration;
 
   /// The text style of the current month
   final TextStyle currentDateTextStyle;
@@ -122,12 +119,12 @@ class MonthView extends StatelessWidget {
     final int year = displayedDate.year;
     // we get rid of the day because if there is any day allowed in
     // in the month we should not gray it out.
-    final DateTime startMonth = DateTime(minDate.year, minDate.month);
-    final DateTime endMonth = DateTime(maxDate.year, maxDate.month);
+    final DateTime startMonth = DateUtilsX.monthOnly(minDate);
+    final DateTime endMonth = DateUtilsX.monthOnly(maxDate);
     DateTime? selectedMonth;
 
     if (selectedDate != null) {
-      selectedMonth = DateTime(selectedDate!.year, selectedDate!.month);
+      selectedMonth = DateUtilsX.monthOnly(selectedDate!);
     }
 
     final monthsNames =
@@ -142,7 +139,7 @@ class MonthView extends StatelessWidget {
           monthToBuild.isAfter(endMonth) || monthToBuild.isBefore(startMonth);
 
       final bool isCurrentMonth =
-          monthToBuild == DateTime(currentDate.year, currentDate.month);
+          monthToBuild == DateUtilsX.monthOnly(currentDate);
 
       final bool isSelected = monthToBuild == selectedMonth;
       //
@@ -164,8 +161,8 @@ class MonthView extends StatelessWidget {
       }
 
       if (isDisabled) {
-        style = disbaledCellsTextStyle;
-        decoration = disbaledCellsDecoration;
+        style = disabledCellsTextStyle;
+        decoration = disabledCellsDecoration;
       }
 
       Widget monthWidget = Container(
@@ -185,7 +182,7 @@ class MonthView extends StatelessWidget {
       } else {
         monthWidget = InkResponse(
           onTap: () => onChanged(monthToBuild),
-          radius: splashRadius ?? 60 / 2 + 4,
+          radius: splashRadius,
           splashColor: splashColor,
           highlightColor: highlightColor,
           child: Semantics(
@@ -205,12 +202,7 @@ class MonthView extends StatelessWidget {
       padding: EdgeInsets.zero,
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const PickerGridDelegate(
-        columnCount: 3,
-        rowPadding: 3,
-        rowExtent: 60,
-        rowStride: 80,
-      ),
+      gridDelegate: const PickerGridDelegate(columnCount: 3, rowCount: 4),
       childrenDelegate: SliverChildListDelegate(
         monthsWidgetList,
         addRepaintBoundaries: false,

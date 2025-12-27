@@ -23,11 +23,11 @@ void main() {
               currentDateTextStyle: const TextStyle(),
               enabledCellsTextStyle: const TextStyle(),
               selectedCellTextStyle: const TextStyle(),
-              disbaledCellsTextStyle: const TextStyle(),
+              disabledCellsTextStyle: const TextStyle(),
               currentDateDecoration: const BoxDecoration(),
               enabledCellsDecoration: const BoxDecoration(),
               selectedCellDecoration: const BoxDecoration(),
-              disbaledCellsDecoration: const BoxDecoration(),
+              disabledCellsDecoration: const BoxDecoration(),
               splashColor: Colors.black,
               highlightColor: Colors.black,
             ),
@@ -64,14 +64,14 @@ void main() {
               currentDateTextStyle: const TextStyle(),
               enabledCellsTextStyle: const TextStyle(),
               selectedCellTextStyle: const TextStyle(),
-              disbaledCellsTextStyle: const TextStyle(),
+              disabledCellsTextStyle: const TextStyle(),
               currentDateDecoration: BoxDecoration(
                 border: Border.all(color: Colors.green),
                 shape: BoxShape.circle,
               ),
               enabledCellsDecoration: const BoxDecoration(),
               selectedCellDecoration: const BoxDecoration(),
-              disbaledCellsDecoration: const BoxDecoration(),
+              disabledCellsDecoration: const BoxDecoration(),
               splashColor: Colors.black,
               highlightColor: Colors.black,
             ),
@@ -111,13 +111,13 @@ void main() {
               currentDateTextStyle: const TextStyle(),
               enabledCellsTextStyle: const TextStyle(),
               selectedCellTextStyle: const TextStyle(),
-              disbaledCellsTextStyle: const TextStyle(),
+              disabledCellsTextStyle: const TextStyle(),
               currentDateDecoration:
                   BoxDecoration(shape: BoxShape.circle, border: Border.all()),
               enabledCellsDecoration: const BoxDecoration(),
               selectedCellDecoration:
                   const BoxDecoration(shape: BoxShape.circle),
-              disbaledCellsDecoration: const BoxDecoration(),
+              disabledCellsDecoration: const BoxDecoration(),
               splashColor: Colors.black,
               highlightColor: Colors.black,
             ),
@@ -167,13 +167,13 @@ void main() {
               currentDateTextStyle: const TextStyle(),
               enabledCellsTextStyle: const TextStyle(),
               selectedCellTextStyle: const TextStyle(),
-              disbaledCellsTextStyle: const TextStyle(),
+              disabledCellsTextStyle: const TextStyle(),
               currentDateDecoration:
                   BoxDecoration(shape: BoxShape.circle, border: Border.all()),
               enabledCellsDecoration: const BoxDecoration(),
               selectedCellDecoration:
                   const BoxDecoration(shape: BoxShape.circle),
-              disbaledCellsDecoration: const BoxDecoration(),
+              disabledCellsDecoration: const BoxDecoration(),
               splashColor: Colors.black,
               highlightColor: Colors.black,
             ),
@@ -225,11 +225,11 @@ void main() {
                 currentDateTextStyle: const TextStyle(),
                 enabledCellsTextStyle: const TextStyle(),
                 selectedCellTextStyle: const TextStyle(),
-                disbaledCellsTextStyle: const TextStyle(),
+                disabledCellsTextStyle: const TextStyle(),
                 currentDateDecoration: const BoxDecoration(),
                 enabledCellsDecoration: const BoxDecoration(),
                 selectedCellDecoration: const BoxDecoration(),
-                disbaledCellsDecoration: const BoxDecoration(),
+                disabledCellsDecoration: const BoxDecoration(),
                 splashColor: Colors.black,
                 highlightColor: Colors.black,
               ),
@@ -262,11 +262,11 @@ void main() {
                 currentDateTextStyle: const TextStyle(),
                 enabledCellsTextStyle: const TextStyle(),
                 selectedCellTextStyle: const TextStyle(),
-                disbaledCellsTextStyle: const TextStyle(),
+                disabledCellsTextStyle: const TextStyle(),
                 currentDateDecoration: const BoxDecoration(),
                 enabledCellsDecoration: const BoxDecoration(),
                 selectedCellDecoration: const BoxDecoration(),
-                disbaledCellsDecoration: const BoxDecoration(),
+                disabledCellsDecoration: const BoxDecoration(),
                 splashColor: Colors.black,
                 highlightColor: Colors.black,
               ),
@@ -295,13 +295,13 @@ void main() {
               currentDateTextStyle: const TextStyle(),
               enabledCellsTextStyle: const TextStyle(),
               selectedCellTextStyle: const TextStyle(),
-              disbaledCellsTextStyle: const TextStyle(),
+              disabledCellsTextStyle: const TextStyle(),
               currentDateDecoration: const BoxDecoration(),
               enabledCellsDecoration: const BoxDecoration(),
               selectedCellDecoration: const BoxDecoration(),
               splashColor: Colors.black,
               highlightColor: Colors.black,
-              disbaledCellsDecoration: const BoxDecoration(
+              disabledCellsDecoration: const BoxDecoration(
                 color: Colors.green,
               ),
             ),
@@ -340,13 +340,13 @@ void main() {
               currentDateTextStyle: const TextStyle(),
               enabledCellsTextStyle: const TextStyle(),
               selectedCellTextStyle: const TextStyle(),
-              disbaledCellsTextStyle: const TextStyle(),
+              disabledCellsTextStyle: const TextStyle(),
               currentDateDecoration: const BoxDecoration(),
               enabledCellsDecoration: const BoxDecoration(),
               selectedCellDecoration: const BoxDecoration(),
               splashColor: Colors.black,
               highlightColor: Colors.black,
-              disbaledCellsDecoration: const BoxDecoration(
+              disabledCellsDecoration: const BoxDecoration(
                 color: Colors.green,
               ),
             ),
@@ -385,11 +385,11 @@ void main() {
                 color: customColor,
               ),
               selectedCellTextStyle: const TextStyle(),
-              disbaledCellsTextStyle: const TextStyle(),
+              disabledCellsTextStyle: const TextStyle(),
               currentDateDecoration: const BoxDecoration(),
               enabledCellsDecoration: const BoxDecoration(),
               selectedCellDecoration: const BoxDecoration(),
-              disbaledCellsDecoration: const BoxDecoration(),
+              disabledCellsDecoration: const BoxDecoration(),
               splashColor: Colors.black,
               highlightColor: Colors.black,
             ),
@@ -429,13 +429,13 @@ void main() {
               currentDateTextStyle: const TextStyle(),
               enabledCellsTextStyle: const TextStyle(),
               selectedCellTextStyle: const TextStyle(),
-              disbaledCellsTextStyle: const TextStyle(
+              disabledCellsTextStyle: const TextStyle(
                 color: customColor,
               ),
               currentDateDecoration: const BoxDecoration(),
               enabledCellsDecoration: const BoxDecoration(),
               selectedCellDecoration: const BoxDecoration(),
-              disbaledCellsDecoration: const BoxDecoration(),
+              disabledCellsDecoration: const BoxDecoration(),
               splashColor: Colors.black,
               highlightColor: Colors.black,
             ),
@@ -476,13 +476,13 @@ void main() {
               ),
               enabledCellsTextStyle: const TextStyle(),
               selectedCellTextStyle: const TextStyle(),
-              disbaledCellsTextStyle: const TextStyle(),
+              disabledCellsTextStyle: const TextStyle(),
               currentDateDecoration: BoxDecoration(
                 border: Border.all(color: customColor),
               ),
               enabledCellsDecoration: const BoxDecoration(),
               selectedCellDecoration: const BoxDecoration(),
-              disbaledCellsDecoration: const BoxDecoration(),
+              disabledCellsDecoration: const BoxDecoration(),
               splashColor: Colors.black,
               highlightColor: Colors.black,
             ),
@@ -531,13 +531,13 @@ void main() {
               selectedCellTextStyle: const TextStyle(
                 color: textColor,
               ),
-              disbaledCellsTextStyle: const TextStyle(),
+              disabledCellsTextStyle: const TextStyle(),
               currentDateDecoration: const BoxDecoration(),
               enabledCellsDecoration: const BoxDecoration(),
               selectedCellDecoration: const BoxDecoration(
                 color: fillColor,
               ),
-              disbaledCellsDecoration: const BoxDecoration(),
+              disabledCellsDecoration: const BoxDecoration(),
               splashColor: Colors.black,
               highlightColor: Colors.black,
             ),
@@ -583,11 +583,11 @@ void main() {
               currentDateTextStyle: const TextStyle(),
               enabledCellsTextStyle: const TextStyle(),
               selectedCellTextStyle: const TextStyle(),
-              disbaledCellsTextStyle: const TextStyle(),
+              disabledCellsTextStyle: const TextStyle(),
               currentDateDecoration: const BoxDecoration(),
               enabledCellsDecoration: const BoxDecoration(),
               selectedCellDecoration: const BoxDecoration(),
-              disbaledCellsDecoration: const BoxDecoration(),
+              disabledCellsDecoration: const BoxDecoration(),
               splashColor: Colors.black,
               highlightColor: Colors.black,
             ),
@@ -618,5 +618,45 @@ void main() {
 
       expect(selectedMonth, dateToSelect);
     });
+
+    testWidgets(
+      'Should not throw assertion when selected date at edge of max or min',
+      (WidgetTester tester) async {
+        final DateTime minDate = DateTime(2017, 1, 1);
+        final DateTime maxDate = DateTime(2028, 6, 29);
+        final DateTime selectedDate = DateTime(2029, 6, 31);
+
+        expect(
+          () async {
+            await tester.pumpWidget(
+              MaterialApp(
+                home: Material(
+                  child: YearView(
+                    currentDate: DateTime(2020, 1, 1),
+                    onChanged: (DateTime date) {},
+                    minDate: minDate,
+                    maxDate: maxDate,
+                    displayedYearRange:
+                        DateTimeRange(start: minDate, end: maxDate),
+                    selectedDate: selectedDate,
+                    currentDateTextStyle: const TextStyle(),
+                    enabledCellsTextStyle: const TextStyle(),
+                    selectedCellTextStyle: const TextStyle(),
+                    disabledCellsTextStyle: const TextStyle(),
+                    currentDateDecoration: const BoxDecoration(),
+                    enabledCellsDecoration: const BoxDecoration(),
+                    selectedCellDecoration: const BoxDecoration(),
+                    disabledCellsDecoration: const BoxDecoration(),
+                    splashColor: Colors.black,
+                    highlightColor: Colors.black,
+                  ),
+                ),
+              ),
+            );
+          },
+          throwsAssertionError,
+        );
+      },
+    );
   });
 }

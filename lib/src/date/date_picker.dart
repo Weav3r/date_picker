@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../shared/picker_type.dart';
+import '../shared/types.dart';
+import '../shared/utils.dart';
 import 'days_picker.dart';
 import '../shared/month_picker.dart';
 import '../shared/year_picker.dart';
@@ -24,9 +26,13 @@ import 'show_date_picker_dialog.dart';
 class DatePicker extends StatefulWidget {
   /// Creates a calendar date picker.
   ///
-  /// It will display a grid of days for the [initialDate]'s month. if that
-  /// is null, `DateTime.now()` will be used. The day
-  /// indicated by [selectedDate] will be selected if provided.
+  /// It will display a grid of days for the [initialDate]'s month. If [initialDate]
+  /// is null, `DateTime.now()` will be used. If `DateTime.now()` does not fall within
+  /// the valid range of [minDate] and [maxDate], it will fall back to the nearest
+  /// valid date from `DateTime.now()`, selecting the [maxDate] if `DateTime.now()` is
+  /// after the valid range, or [minDate] if before.
+  ///
+  /// The day indicated by [selectedDate] will be selected if provided.
   ///
   /// The optional [onDateSelected] callback will be called if provided when a date
   /// is selected.
@@ -58,8 +64,8 @@ class DatePicker extends StatefulWidget {
     this.daysOfTheWeekTextStyle,
     this.enabledCellsTextStyle,
     this.enabledCellsDecoration = const BoxDecoration(),
-    this.disbaledCellsTextStyle,
-    this.disbaledCellsDecoration = const BoxDecoration(),
+    this.disabledCellsTextStyle,
+    this.disabledCellsDecoration = const BoxDecoration(),
     this.currentDateTextStyle,
     this.currentDateDecoration,
     this.selectedCellTextStyle,
@@ -71,12 +77,18 @@ class DatePicker extends StatefulWidget {
     this.splashColor,
     this.splashRadius,
     this.centerLeadingDate = false,
+    this.previousPageSemanticLabel,
+    this.nextPageSemanticLabel,
+    this.disabledDayPredicate,
   }) {
     assert(!minDate.isAfter(maxDate), "minDate can't be after maxDate");
   }
 
-  /// The date which will be displayed on first opening.
-  /// If not specified, the picker will default to `DateTime.now()` date.
+  /// The date which will be displayed on first opening. If not specified, the picker
+  /// will default to `DateTime.now()`. If `DateTime.now()` does not fall within the
+  /// valid range of [minDate] and [maxDate], it will automatically adjust to the nearest
+  /// valid date, selecting [maxDate] if `DateTime.now()` is after the valid range, or
+  /// [minDate] if it is before.
   ///
   /// Note that only dates are considered. time fields are ignored.
   final DateTime? initialDate;
@@ -136,12 +148,12 @@ class DatePicker extends StatefulWidget {
   ///
   /// defaults to [TextTheme.titleLarge] with a [FontWeight.normal]
   /// and [ColorScheme.onSurface] color with 30% opacity.
-  final TextStyle? disbaledCellsTextStyle;
+  final TextStyle? disabledCellsTextStyle;
 
   /// The cell decoration of cells which are not selectable.
   ///
   /// defaults to empty [BoxDecoration].
-  final BoxDecoration disbaledCellsDecoration;
+  final BoxDecoration disabledCellsDecoration;
 
   /// The text style of the current date.
   ///
@@ -190,7 +202,9 @@ class DatePicker extends StatefulWidget {
 
   /// The highlight color of the ink response when pressed.
   ///
-  /// defaults to [Theme.highlightColor].
+  /// defaults to the color of [selectedCellDecoration] with 30% opacity,
+  /// if [selectedCellDecoration] is null will fall back to
+  /// [ColorScheme.onPrimary] with 30% opacity.
   final Color? highlightColor;
 
   /// The radius of the ink splash.
@@ -201,6 +215,19 @@ class DatePicker extends StatefulWidget {
   /// <       December 2023      >
   ///
   final bool centerLeadingDate;
+
+  /// Semantic label for button to go to the previous page.
+  ///
+  /// defaults to `Previous Day/Month/Year` according to picker type.
+  final String? previousPageSemanticLabel;
+
+  /// Semantic label for button to go to the next page.
+  ///
+  /// defaults to `Next Day/Month/Year` according to picker type.
+  final String? nextPageSemanticLabel;
+
+  /// A predicate function used to determine if a given day should be disabled.
+  final DatePredicate? disabledDayPredicate;
 
   @override
   State<DatePicker> createState() => _DatePickerState();
@@ -213,12 +240,12 @@ class _DatePickerState extends State<DatePicker> {
 
   @override
   void initState() {
-    _displayedDate = DateUtils.dateOnly(widget.initialDate ?? DateTime.now());
+    final clampedInitailDate =
+        DateUtilsX.clampDateToRange(max: widget.maxDate, min: widget.minDate, date: DateTime.now());
+    _displayedDate = DateUtils.dateOnly(widget.initialDate ?? clampedInitailDate);
     _pickerType = widget.initialPickerType;
 
-    _selectedDate = widget.selectedDate != null
-        ? DateUtils.dateOnly(widget.selectedDate!)
-        : null;
+    _selectedDate = widget.selectedDate != null ? DateUtils.dateOnly(widget.selectedDate!) : null;
 
     super.initState();
   }
@@ -226,15 +253,15 @@ class _DatePickerState extends State<DatePicker> {
   @override
   void didUpdateWidget(covariant DatePicker oldWidget) {
     if (oldWidget.initialDate != widget.initialDate) {
-      _displayedDate = DateUtils.dateOnly(widget.initialDate ?? DateTime.now());
+      final clampedInitailDate =
+          DateUtilsX.clampDateToRange(max: widget.maxDate, min: widget.minDate, date: DateTime.now());
+      _displayedDate = DateUtils.dateOnly(widget.initialDate ?? clampedInitailDate);
     }
     if (oldWidget.initialPickerType != widget.initialPickerType) {
       _pickerType = widget.initialPickerType;
     }
     if (oldWidget.selectedDate != widget.selectedDate) {
-      _selectedDate = widget.selectedDate != null
-          ? DateUtils.dateOnly(widget.selectedDate!)
-          : null;
+      _selectedDate = widget.selectedDate != null ? DateUtils.dateOnly(widget.selectedDate!) : null;
     }
     super.didUpdateWidget(oldWidget);
   }
@@ -249,15 +276,14 @@ class _DatePickerState extends State<DatePicker> {
             centerLeadingDate: widget.centerLeadingDate,
             initialDate: _displayedDate,
             selectedDate: _selectedDate,
-            currentDate:
-                DateUtils.dateOnly(widget.currentDate ?? DateTime.now()),
+            currentDate: DateUtils.dateOnly(widget.currentDate ?? DateTime.now()),
             maxDate: DateUtils.dateOnly(widget.maxDate),
             minDate: DateUtils.dateOnly(widget.minDate),
             daysOfTheWeekTextStyle: widget.daysOfTheWeekTextStyle,
             enabledCellsTextStyle: widget.enabledCellsTextStyle,
             enabledCellsDecoration: widget.enabledCellsDecoration,
-            disbaledCellsTextStyle: widget.disbaledCellsTextStyle,
-            disbaledCellsDecoration: widget.disbaledCellsDecoration,
+            disabledCellsTextStyle: widget.disabledCellsTextStyle,
+            disabledCellsDecoration: widget.disabledCellsDecoration,
             currentDateDecoration: widget.currentDateDecoration,
             currentDateTextStyle: widget.currentDateTextStyle,
             selectedCellDecoration: widget.selectedCellDecoration,
@@ -268,17 +294,20 @@ class _DatePickerState extends State<DatePicker> {
             splashColor: widget.splashColor,
             highlightColor: widget.highlightColor,
             splashRadius: widget.splashRadius,
+            previousPageSemanticLabel: widget.previousPageSemanticLabel,
+            nextPageSemanticLabel: widget.nextPageSemanticLabel,
+            disabledDayPredicate: widget.disabledDayPredicate,
+            onLeadingDateTap: () {
+              setState(() {
+                _pickerType = PickerType.months;
+              });
+            },
             onDateSelected: (selectedDate) {
               setState(() {
                 _displayedDate = selectedDate;
                 _selectedDate = selectedDate;
               });
               widget.onDateSelected?.call(selectedDate);
-            },
-            onLeadingDateTap: () {
-              setState(() {
-                _pickerType = PickerType.months;
-              });
             },
           ),
         );
@@ -289,14 +318,13 @@ class _DatePickerState extends State<DatePicker> {
             centerLeadingDate: widget.centerLeadingDate,
             initialDate: _displayedDate,
             selectedDate: _selectedDate,
-            currentDate:
-                DateUtils.dateOnly(widget.currentDate ?? DateTime.now()),
+            currentDate: DateUtils.dateOnly(widget.currentDate ?? DateTime.now()),
             maxDate: DateUtils.dateOnly(widget.maxDate),
             minDate: DateUtils.dateOnly(widget.minDate),
             currentDateDecoration: widget.currentDateDecoration,
             currentDateTextStyle: widget.currentDateTextStyle,
-            disbaledCellsDecoration: widget.disbaledCellsDecoration,
-            disbaledCellsTextStyle: widget.disbaledCellsTextStyle,
+            disabledCellsDecoration: widget.disabledCellsDecoration,
+            disabledCellsTextStyle: widget.disabledCellsTextStyle,
             enabledCellsDecoration: widget.enabledCellsDecoration,
             enabledCellsTextStyle: widget.enabledCellsTextStyle,
             selectedCellDecoration: widget.selectedCellDecoration,
@@ -307,14 +335,22 @@ class _DatePickerState extends State<DatePicker> {
             splashColor: widget.splashColor,
             highlightColor: widget.highlightColor,
             splashRadius: widget.splashRadius,
+            previousPageSemanticLabel: widget.previousPageSemanticLabel,
+            nextPageSemanticLabel: widget.nextPageSemanticLabel,
             onLeadingDateTap: () {
               setState(() {
                 _pickerType = PickerType.years;
               });
             },
             onDateSelected: (selectedMonth) {
+              // clamped the initial date to fall between min and max date.
+              final clampedSelectedMonth = DateUtilsX.clampDateToRange(
+                min: widget.minDate,
+                max: widget.maxDate,
+                date: selectedMonth,
+              );
               setState(() {
-                _displayedDate = selectedMonth;
+                _displayedDate = clampedSelectedMonth;
                 _pickerType = PickerType.days;
               });
             },
@@ -327,14 +363,13 @@ class _DatePickerState extends State<DatePicker> {
             centerLeadingDate: widget.centerLeadingDate,
             initialDate: _displayedDate,
             selectedDate: _selectedDate,
-            currentDate:
-                DateUtils.dateOnly(widget.currentDate ?? DateTime.now()),
+            currentDate: DateUtils.dateOnly(widget.currentDate ?? DateTime.now()),
             maxDate: DateUtils.dateOnly(widget.maxDate),
             minDate: DateUtils.dateOnly(widget.minDate),
             currentDateDecoration: widget.currentDateDecoration,
             currentDateTextStyle: widget.currentDateTextStyle,
-            disbaledCellsDecoration: widget.disbaledCellsDecoration,
-            disbaledCellsTextStyle: widget.disbaledCellsTextStyle,
+            disabledCellsDecoration: widget.disabledCellsDecoration,
+            disabledCellsTextStyle: widget.disabledCellsTextStyle,
             enabledCellsDecoration: widget.enabledCellsDecoration,
             enabledCellsTextStyle: widget.enabledCellsTextStyle,
             selectedCellDecoration: widget.selectedCellDecoration,
@@ -345,9 +380,17 @@ class _DatePickerState extends State<DatePicker> {
             splashColor: widget.splashColor,
             highlightColor: widget.highlightColor,
             splashRadius: widget.splashRadius,
+            previousPageSemanticLabel: widget.previousPageSemanticLabel,
+            nextPageSemanticLabel: widget.nextPageSemanticLabel,
             onDateSelected: (selectedYear) {
+              // clamped the initial date to fall between min and max date.
+              final clampedSelectedYear = DateUtilsX.clampDateToRange(
+                min: widget.minDate,
+                max: widget.maxDate,
+                date: selectedYear,
+              );
               setState(() {
-                _displayedDate = selectedYear;
+                _displayedDate = clampedSelectedYear;
                 _pickerType = PickerType.months;
               });
             },

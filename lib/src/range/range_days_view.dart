@@ -2,11 +2,9 @@
 
 import 'package:flutter/material.dart';
 
-import 'package:intl/intl.dart' as intl;
+import 'package:intl/intl.dart' show DateFormat;
 
 import '../shared/picker_grid_delegate.dart';
-
-const double _dayPickerRowHeight = 52.0;
 
 /// Displays the days of a given month and allows choosing days range.
 ///
@@ -30,14 +28,14 @@ class RangeDaysView extends StatelessWidget {
     required this.daysOfTheWeekTextStyle,
     required this.enabledCellsTextStyle,
     required this.enabledCellsDecoration,
-    required this.disbaledCellsTextStyle,
-    required this.disbaledCellsDecoration,
+    required this.disabledCellsTextStyle,
+    required this.disabledCellsDecoration,
     required this.currentDateTextStyle,
     required this.currentDateDecoration,
     required this.selectedCellsTextStyle,
     required this.selectedCellsDecoration,
-    required this.singelSelectedCellTextStyle,
-    required this.singelSelectedCellDecoration,
+    required this.singleSelectedCellTextStyle,
+    required this.singleSelectedCellDecoration,
     required this.highlightColor,
     required this.splashColor,
     required this.splashRadius,
@@ -125,18 +123,18 @@ class RangeDaysView extends StatelessWidget {
   final BoxDecoration enabledCellsDecoration;
 
   /// The text style of cells which are not selectable.
-  final TextStyle disbaledCellsTextStyle;
+  final TextStyle disabledCellsTextStyle;
 
   /// The cell decoration of cells which are not selectable.
-  final BoxDecoration disbaledCellsDecoration;
+  final BoxDecoration disabledCellsDecoration;
 
   /// The text style of a single selected cell and the
   /// leading/trailing cell of a selected range.
-  final TextStyle singelSelectedCellTextStyle;
+  final TextStyle singleSelectedCellTextStyle;
 
   /// The cell decoration of a single selected cell and the
   /// leading/trailing cell of a selected range.
-  final BoxDecoration singelSelectedCellDecoration;
+  final BoxDecoration singleSelectedCellDecoration;
 
   /// The text style of the current date.
   final TextStyle currentDateTextStyle;
@@ -183,7 +181,7 @@ class RangeDaysView extends StatelessWidget {
   ) {
     final List<Widget> result = <Widget>[];
     final weekdayNames =
-        intl.DateFormat('', locale.toString()).dateSymbols.SHORTWEEKDAYS;
+        DateFormat('', locale.toString()).dateSymbols.SHORTWEEKDAYS;
 
     for (int i = localizations.firstDayOfWeekIndex; true; i = (i + 1) % 7) {
       // to save space in arabic as arabic don't has short week days.
@@ -289,8 +287,8 @@ class RangeDaysView extends StatelessWidget {
         if (isSingleCellSelected || isStartDate || isEndDate) {
           //
           //
-          style = singelSelectedCellTextStyle;
-          decoration = singelSelectedCellDecoration;
+          style = singleSelectedCellTextStyle;
+          decoration = singleSelectedCellDecoration;
         }
 
         if (isWithinRange) {
@@ -303,14 +301,14 @@ class RangeDaysView extends StatelessWidget {
         if (isDisabled) {
           //
           //
-          style = disbaledCellsTextStyle;
-          decoration = disbaledCellsDecoration;
+          style = disabledCellsTextStyle;
+          decoration = disabledCellsDecoration;
         }
 
         if (isCurrent && isDisabled) {
           //
           //
-          style = disbaledCellsTextStyle;
+          style = disabledCellsTextStyle;
           decoration = currentDateDecoration;
         }
 
@@ -364,7 +362,7 @@ class RangeDaysView extends StatelessWidget {
 
               onEndDateChanged(dayToBuild);
             },
-            radius: splashRadius ?? _dayPickerRowHeight / 2 + 4,
+            radius: splashRadius,
             splashColor: splashColor,
             highlightColor: highlightColor,
             child: dayWidget,
@@ -379,13 +377,7 @@ class RangeDaysView extends StatelessWidget {
       padding: EdgeInsets.zero,
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const PickerGridDelegate(
-        columnCount: DateTime.daysPerWeek,
-        columnPadding: 0,
-        rowPadding: 3,
-        rowExtent: _dayPickerRowHeight,
-        rowStride: _dayPickerRowHeight,
-      ),
+      gridDelegate: const PickerGridDelegate(columnCount: 7, rowCount: 7),
       childrenDelegate: SliverChildListDelegate(
         dayItems,
         addRepaintBoundaries: false,
